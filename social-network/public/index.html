@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Circle</title>
+<style>
+:root{--bg:#f1eff9;--card:#fff;--ink:#1f1b3a;--mute:#6b6788;--line:#e0dcf0;--acc:#5b3df5;--hi:#ff7a45}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 "Trebuchet MS","Segoe UI",system-ui,sans-serif}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+.wrap{max-width:640px;margin:0 auto;padding:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+h1,h2,h3{margin:0 0 8px}
+input,textarea,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:#fff;margin-bottom:10px}
+textarea{resize:vertical;min-height:70px}
+.btn{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:9px 16px}
+.btn.alt{background:#fff;color:var(--acc);border:1px solid var(--acc)}
+.btn.grey{background:#fff;color:var(--mute);border:1px solid var(--line)}
+.btn:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--hi);outline-offset:2px}
+header.top{background:var(--ink);color:#fff;position:sticky;top:0;z-index:5}
+header.top .wrap{display:flex;align-items:center;justify-content:space-between;padding:10px 16px}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:none;border:0;color:#cfcbe8;padding:8px 12px;border-radius:8px;position:relative}
+nav button.on{background:var(--acc);color:#fff}
+.badge{background:var(--hi);color:#fff;border-radius:99px;font-size:.75rem;padding:0 6px;margin-left:4px}
+.row{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.mute{color:var(--mute);font-size:.9rem}
+.post header{display:flex;justify-content:space-between;align-items:baseline}
+.post img{max-width:100%;border-radius:10px;margin:6px 0}
+.post footer{display:flex;gap:14px;align-items:center;margin-top:6px}
+.like{background:none;border:1px solid var(--line);border-radius:99px;padding:3px 12px}
+.like.on{background:var(--hi);border-color:var(--hi);color:#fff}
+.cm{list-style:none;padding:0;margin:8px 0}
+.cm li{background:var(--bg);border-radius:8px;padding:6px 10px;margin-bottom:4px;font-size:.95rem}
+.cf{display:flex;gap:8px}.cf input{margin:0}
+a.u{color:var(--acc);text-decoration:none;cursor:pointer;font-weight:bold}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 18px;border-radius:10px;display:none;z-index:9;max-width:90%}
+.hidden{display:none}
+.live{width:9px;height:9px;border-radius:50%;background:#2fd07a;display:inline-block;margin-right:6px}
+.live.off{background:#aaa}
+</style>
+</head>
+<body>
+<div id="toast" role="status"></div>
+<section id="offline" class="wrap"><div class="card">
+  <h2>Server is not connected</h2>
+  <p id="offMsg">Connecting to the server…</p>
+</div></section>
+
+<section id="auth" class="wrap hidden">
+  <h1>Circle</h1>
+  <p class="mute">Share updates with friends in real time.</p>
+  <div class="card">
+    <h2 id="authTitle">Log in</h2>
+    <input id="aName" class="hidden" placeholder="Your full name" aria-label="Full name">
+    <input id="aUser" placeholder="Username" aria-label="Username" autocomplete="username">
+    <input id="aPass" type="password" placeholder="Password (6+ characters)" aria-label="Password" autocomplete="current-password">
+    <div class="row"><button class="btn" id="aGo">Log in</button><button class="btn grey" id="aSwap">Create an account</button></div>
+  </div>
+</section>
+
+<div id="app" class="hidden">
+  <header class="top"><div class="wrap">
+    <b><span class="live off" id="dot"></span>Circle</b>
+    <nav id="nav">
+      <button data-v="feed" class="on">Feed</button>
+      <button data-v="people">People</button>
+      <button data-v="alerts">Alerts<span class="badge hidden" id="badge">0</span></button>
+      <button data-v="me">Me</button>
+    </nav>
+  </div></header>
+  <main class="wrap">
+    <div id="v-feed">
+      <div class="card">
+        <textarea id="pText" maxlength="500" placeholder="What's happening?" aria-label="New post"></textarea>
+        <img id="pPrev" class="hidden" style="max-width:100%;border-radius:10px;margin-bottom:10px" alt="Preview">
+        <div class="row">
+          <label class="btn alt">Add photo<input type="file" id="pFile" accept="image/*" hidden></label>
+          <button class="btn" id="pGo">Post</button>
+        </div>
+      </div>
+      <div id="posts"><p class="mute">Loading posts…</p></div>
+    </div>
+    <div id="v-people" class="hidden">
+      <div class="card"><input id="qIn" placeholder="Search people by name or username" aria-label="Search people" style="margin:0"></div>
+      <div id="requests"></div>
+      <div id="peopleList"></div>
+    </div>
+    <div id="v-alerts" class="hidden"><div id="alertList"></div></div>
+    <div id="v-profile" class="hidden"></div>
+    <div id="v-me" class="hidden">
+      <div class="card">
+        <h2 id="meName"></h2>
+        <label class="mute" for="sBio">Bio</label>
+        <textarea id="sBio" maxlength="160" style="min-height:60px"></textarea>
+        <label class="mute" for="sPriv">Who can see my posts and profile</label>
+        <select id="sPriv"><option value="public">Everyone</option><option value="friends">Friends only</option></select>
+        <button class="btn" id="sSave">Save settings</button>
+      </div>
+      <div class="card"><h3>My friends</h3><div id="friendList"></div></div>
+      <button class="btn grey" id="logout">Log out</button>
+    </div>
+  </main>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let ws, me = null, unread = 0, view = 'feed', photo = null, regMode = false;
+
+// ---------- WebSocket connection ----------
+function noServer() {
+  $('offline').classList.remove('hidden');
+  $('offMsg').innerHTML = location.protocol === 'file:'
+    ? 'You opened this file directly. Start the server first (double-click <b>start.bat</b>, or run <b>npm start</b>), then open <b>http://localhost:3000</b> in your browser.'
+    : 'Cannot reach the server. Make sure it is still running, then this page will reconnect by itself.';
+}
+function connect() {
+  if (location.protocol === 'file:') { noServer(); return; }
+  ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host);
+  ws.onopen = () => {
+    $('offline').classList.add('hidden');
+    $('dot').classList.remove('off');
+    const tok = localStorage.getItem('circleToken');
+    tok ? send({ t: 'resume', token: tok }) : showAuth();
+  };
+  ws.onmessage = e => handle(JSON.parse(e.data));
+  ws.onclose = () => { $('dot').classList.add('off'); noServer(); setTimeout(connect, 1500); };
+}
+const send = o => ws.readyState === 1 && ws.send(JSON.stringify(o));
+function toast(t) { const el = $('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => el.style.display = 'none', 3000); }
+
+function handle(m) {
+  switch (m.t) {
+    case 'auth': me = m.me; localStorage.setItem('circleToken', m.token);
+      $('auth').classList.add('hidden'); $('app').classList.remove('hidden');
+      send({ t: 'feed' }); send({ t: 'notifs' }); renderMe(); break;
+    case 'noauth': localStorage.removeItem('circleToken'); showAuth(); break;
+    case 'err': toast(m.m); break;
+    case 'feed': $('posts').innerHTML = m.posts.length ? m.posts.map(postHTML).join('') : '<p class="mute">No posts yet. Write the first one!</p>'; break;
+    case 'feed_refresh': send({ t: 'feed' }); break;
+    case 'post': upsert(m.p); break;
+    case 'me': me = m.me; renderMe(); if (view === 'people') renderRequests(); break;
+    case 'people': renderPeople(m.list); break;
+    case 'profile': renderProfile(m); break;
+    case 'notifs': unread = m.list.filter(n => !n.read).length; badge();
+      $('alertList').innerHTML = m.list.length ? m.list.map(n => alertHTML(n)).join('') : '<p class="mute">No alerts yet.</p>'; break;
+    case 'notif': unread++; badge(); toast(m.n.text);
+      if (view === 'alerts') send({ t: 'notifs' }); break;
+  }
+}
+
+// ---------- auth ----------
+function showAuth() { $('app').classList.add('hidden'); $('auth').classList.remove('hidden'); }
+$('aSwap').onclick = () => {
+  regMode = !regMode;
+  $('aName').classList.toggle('hidden', !regMode);
+  $('authTitle').textContent = $('aGo').textContent = regMode ? 'Create account' : 'Log in';
+  $('aSwap').textContent = regMode ? 'I have an account' : 'Create an account';
+};
+$('aGo').onclick = () => send({ t: regMode ? 'register' : 'login', name: $('aName').value, username: $('aUser').value, password: $('aPass').value });
+$('logout').onclick = () => { localStorage.removeItem('circleToken'); location.reload(); };
+
+// ---------- navigation ----------
+function show(v) {
+  view = v;
+  for (const x of ['feed', 'people', 'alerts', 'profile', 'me']) $('v-' + x).classList.toggle('hidden', x !== v);
+  document.querySelectorAll('#nav button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  if (v === 'feed') send({ t: 'feed' });
+  if (v === 'people') { renderRequests(); send({ t: 'people', q: $('qIn').value }); }
+  if (v === 'alerts') { send({ t: 'notifs' }); send({ t: 'read_notifs' }); unread = 0; badge(); }
+  if (v === 'me') renderMe();
+}
+$('nav').onclick = e => { const b = e.target.closest('button'); if (b) show(b.dataset.v); };
+function badge() { $('badge').textContent = unread; $('badge').classList.toggle('hidden', !unread); }
+
+// ---------- posts ----------
+const ago = t => { const s = (Date.now() - t) / 1000; return s < 60 ? 'just now' : s < 3600 ? Math.floor(s / 60) + ' min ago' : s < 86400 ? Math.floor(s / 3600) + ' h ago' : new Date(t).toLocaleDateString(); };
+function postHTML(p) {
+  return `<article class="card post" data-pid="${p.id}">
+    <header><a class="u" data-act="open" data-u="${p.author}">${esc(p.authorName)} <span class="mute">@${p.author}</span></a><span class="mute">${ago(p.time)}</span></header>
+    <p>${esc(p.text)}</p>${p.image ? `<img src="${p.image}" alt="Photo shared by ${esc(p.authorName)}">` : ''}
+    <footer><button class="like ${p.liked ? 'on' : ''}" data-act="like" data-id="${p.id}">♥ ${p.likes}</button><span class="mute">${p.comments.length} comments</span></footer>
+    <ul class="cm">${p.comments.map(c => `<li><b>${esc(c.name)}</b> ${esc(c.text)}</li>`).join('')}</ul>
+    <div class="cf"><input placeholder="Write a comment" aria-label="Comment" data-cin="${p.id}"><button class="btn alt" data-act="comment" data-id="${p.id}">Send</button></div>
+  </article>`;
+}
+function upsert(p) {
+  document.querySelectorAll(`[data-pid="${p.id}"]`).forEach(el => {
+    const inp = el.querySelector('input'), val = inp.value, focus = document.activeElement === inp;
+    el.outerHTML = postHTML(p);
+    const n = document.querySelector(`[data-pid="${p.id}"] input`);
+    if (n && val) { n.value = val; if (focus) n.focus(); }
+  });
+  if (!document.querySelector(`#posts [data-pid="${p.id}"]`) && view === 'feed') {
+    const box = $('posts'); if (box.querySelector('p.mute')) box.innerHTML = '';
+    box.insertAdjacentHTML('afterbegin', postHTML(p));
+  }
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const a = b.dataset.act, id = +b.dataset.id;
+  if (a === 'like') send({ t: 'like', id });
+  if (a === 'comment') { const i = document.querySelector(`[data-cin="${id}"]`); if (i.value.trim()) { send({ t: 'comment', id, text: i.value }); i.value = ''; } }
+  if (a === 'open') { show('profile'); $('v-profile').innerHTML = '<p class="mute">Loading…</p>'; send({ t: 'profile', username: b.dataset.u }); }
+  if (a === 'req') send({ t: 'friend_req', to: b.dataset.u });
+  if (a === 'accept') send({ t: 'friend_accept', from: b.dataset.u });
+  if (a === 'decline') send({ t: 'friend_decline', from: b.dataset.u });
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.dataset.cin) e.target.nextElementSibling.click();
+});
+$('pGo').onclick = () => {
+  if (!$('pText').value.trim() && !photo) return toast('Write something or add a photo');
+  send({ t: 'post', text: $('pText').value, image: photo });
+  $('pText').value = ''; photo = null; $('pPrev').classList.add('hidden'); $('pFile').value = '';
+};
+$('pFile').onchange = e => {          // shrink the photo in the browser before sending
+  const f = e.target.files[0]; if (!f) return;
+  const img = new Image();
+  img.onload = () => {
+    const k = Math.min(1, 800 / Math.max(img.width, img.height)), cv = document.createElement('canvas');
+    cv.width = img.width * k; cv.height = img.height * k;
+    cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+    photo = cv.toDataURL('image/jpeg', 0.7); $('pPrev').src = photo; $('pPrev').classList.remove('hidden');
+  };
+  img.src = URL.createObjectURL(f);
+};
+
+// ---------- people, friends, profile ----------
+const personRow = (u, extra) => `<div class="card row"><div><a class="u" data-act="open" data-u="${u.username}">${esc(u.name)}</a> <span class="mute">@${u.username}</span></div>${extra}</div>`;
+function renderPeople(list) {
+  const label = { friends: '<span class="mute">Friends</span>', sent: '<span class="mute">Request sent</span>', received: '<span class="mute">Sent you a request</span>' };
+  $('peopleList').innerHTML = list.length ? list.map(u => personRow(u, u.status === 'none' ? `<button class="btn alt" data-act="req" data-u="${u.username}">Add friend</button>` : label[u.status])).join('') : '<p class="mute">No one found.</p>';
+}
+function renderRequests() {
+  $('requests').innerHTML = me.incoming.length ? '<h3>Friend requests</h3>' + me.incoming.map(u => personRow(u,
+    `<span><button class="btn" data-act="accept" data-u="${u.username}">Accept</button> <button class="btn grey" data-act="decline" data-u="${u.username}">Decline</button></span>`)).join('') : '';
+  send({ t: 'people', q: $('qIn').value });
+}
+let qT; $('qIn').oninput = () => { clearTimeout(qT); qT = setTimeout(() => send({ t: 'people', q: $('qIn').value }), 200); };
+function renderProfile(m) {
+  const u = m.user;
+  const btn = m.status === 'none' ? `<button class="btn" data-act="req" data-u="${u.username}">Add friend</button>` : `<span class="mute">${{ friends: 'Friends', sent: 'Request sent', received: 'Sent you a request', self: 'This is you' }[m.status]}</span>`;
+  $('v-profile').innerHTML = `<div class="card"><div class="row"><h2>${esc(u.name)} <span class="mute">@${u.username}</span></h2>${btn}</div><p>${esc(u.bio || 'No bio yet.')}</p></div>` +
+    (m.locked ? '<div class="card mute">This profile is private. Become friends to see their posts.</div>' : m.posts.map(postHTML).join('') || '<p class="mute">No posts yet.</p>');
+}
+function renderMe() {
+  $('meName').textContent = me.name + ' (@' + me.username + ')';
+  if (document.activeElement !== $('sBio')) $('sBio').value = me.bio;
+  $('sPriv').value = me.privacy;
+  $('friendList').innerHTML = me.friends.length ? me.friends.map(u => `<div><a class="u" data-act="open" data-u="${u.username}">${esc(u.name)}</a> <span class="mute">@${u.username}</span></div>`).join('') : '<p class="mute">No friends yet. Find people in the People tab.</p>';
+}
+$('sSave').onclick = () => { send({ t: 'settings', bio: $('sBio').value, privacy: $('sPriv').value }); toast('Settings saved'); };
+const alertHTML = n => `<div class="card ${n.read ? '' : 'unread'}" style="${n.read ? '' : 'border-left:4px solid var(--hi)'}">${esc(n.text)} <span class="mute">· ${ago(n.time)}</span></div>`;
+
+connect();
+</script>
+</body>
+</html>
